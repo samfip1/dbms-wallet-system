@@ -1,0 +1,81 @@
+USERS --
+user_id 		unique	auto increment primary key
+Full name,
+password,
+phone number,		unique
+age
+email			unique
+username		unique
+
+
+
+total Trasaction -
+trasaction_id	primary key	unique
+sender_username 
+reciever_username
+amount
+time
+comments
+RELATION_ACCOUNTS
+
+
+
+
+
+ACCOUNTS --
+accounts id
+relation with USERS
+money
+transaction pin
+created_at
+numberofTransaction
+
+
+
+
+
+Leaderboard
+leaderboard_id
+money
+total transaction
+username
+relation with users
+
+
+
+admin
+admin id
+username
+name
+password
+email
+phone
+createdAt
+age
+
+
+
+
+
+Fraud People
+id
+username
+reason
+reported_at
+email
+relation with users
+
+
+
+
+
+login activity
+login id
+login time
+username
+device ip //may be
+relation username
+
+
+
+	
