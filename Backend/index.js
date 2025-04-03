@@ -4,7 +4,6 @@ import mysql from "mysql2/promise";
 //2: create a db
 //3: create a table
 
-
 try {
 
     const db = await mysql.createConnection({
