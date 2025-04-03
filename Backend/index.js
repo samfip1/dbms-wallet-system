@@ -57,6 +57,7 @@ app.post(
             .isLength({ min: 6 })
             .withMessage("Password must be at least 6 characters long"),
         body("email").isEmail().withMessage("Invalid email address"),
+        body("transaction_pin").isLength({min: 4, max: 4}).withMessage("Transaction pin must be 4 digits"),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -64,8 +65,7 @@ app.post(
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { username, password, full_name, phone_number, age, email } =
-            req.body;
+        const { username, password, full_name, phone_number, age, email , transaction_pin} = req.body;
 
         try {
             if (!db) {
@@ -100,11 +100,20 @@ app.post(
                 { expiresIn: "1h" }
             );
 
+             const money = Math.random() *85289354;
+
+            const [accountsTable] = await db.execute(
+                "INSERT INTO accounts (user_id, money, transaction_pin, number_of_transactions) VALUES (?, ?, ?, ?)",
+                [userId, money, transaction_pin, 0]
+            );
+            
             res.status(201).json({
                 message: "User registered successfully!",
                 userId: userId,
                 token: token,
             });
+
+
         } catch (error) {
             console.error("Registration error:", error);
             res.status(500).json({
@@ -140,7 +149,7 @@ app.post("/login", async (req, res) => {
         if (users.length === 0) {
             return res
                 .status(401)
-                .json({ message: "Invalid username or password." }); 
+                .json({ message: "Invalid username or password." });
         }
 
         const user = users[0];
@@ -150,7 +159,7 @@ app.post("/login", async (req, res) => {
         if (!passwordMatch) {
             return res
                 .status(401)
-                .json({ message: "Invalid username or password." }); 
+                .json({ message: "Invalid username or password." });
         }
 
         const token = jwt.sign(
