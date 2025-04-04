@@ -31,7 +31,6 @@ let db;
     }
 })();
 
-// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
@@ -44,18 +43,18 @@ app.get("/", (req, res) => {
     res.send("hello");
 });
 
-// User registration route with input validation
 app.post(
     "/user/signup",
     [
         body("username")
             .isLength({ min: 3 })
-            .withMessage("Username must be at least 3 characters long"),
+            .withMessage("Username must be at least 3 characters long")
+            .escape(), 
         body("password")
             .isLength({ min: 6 })
             .withMessage("Password must be at least 6 characters long"),
-        body("email").isEmail().withMessage("Invalid email address"),
-        body("transaction_pin").isLength({min: 4, max: 4}).withMessage("Transaction pin must be 4 digits"),
+        body("email").isEmail().withMessage("Invalid email address").normalizeEmail(), 
+        body("transaction_pin").isLength({min: 4, max: 4}).withMessage("Transaction pin must be 4 digits").escape(),
     ],
     async (req, res) => {
         const errors = validationResult(req);
@@ -72,6 +71,7 @@ app.post(
                     .json({ message: "Database connection failed." });
             }
 
+            
             const [existingUsers] = await db.execute(
                 "SELECT * FROM users WHERE username = ? OR email = ?",
                 [username, email]
@@ -79,12 +79,13 @@ app.post(
 
             if (existingUsers.length > 0) {
                 return res
-                    .status(400)
+                    .status(409) // 409 Conflict
                     .json({ message: "Username or email already exists." });
             }
 
             const hashedPassword = await hash(password, 12);
 
+            
             const [result] = await db.execute(
                 "INSERT INTO users (username, password, full_name, phone_number, age, email) VALUES (?, ?, ?, ?, ?, ?)",
                 [username, hashedPassword, full_name, phone_number, age, email]
@@ -95,16 +96,18 @@ app.post(
             const token = jwt.sign(
                 { userId: userId, username: username },
                 JWT_SECRET,
-                { expiresIn: "1h" }
+                { expiresIn: "1h" } 
             );
 
              const money = Math.random() *85289354;
 
-            const [accountsTable] = await db.execute(
+            const [accountInsertResult] = await db.execute(
                 "INSERT INTO accounts (user_id, money, transaction_pin, number_of_transactions) VALUES (?, ?, ?, ?)",
                 [userId, money, transaction_pin, 0]
             );
             
+            const accountId = accountInsertResult.insertId;
+
             res.status(201).json({
                 message: "User registered successfully!",
                 userId: userId,
@@ -113,7 +116,9 @@ app.post(
                 email,
                 phone_number,
                 age,
-                full_name
+                full_name,
+                money,
+                accountId, 
             });
 
 
@@ -127,7 +132,6 @@ app.post(
     }
 );
 
-// User login route
 app.post("/login", async (req, res) => {
     const { username, password } = req.body;
 
@@ -156,6 +160,7 @@ app.post("/login", async (req, res) => {
         }
 
         const user = users[0];
+        console.log(user);
 
         const passwordMatch = await compare(password, user.password);
 
@@ -165,8 +170,21 @@ app.post("/login", async (req, res) => {
                 .json({ message: "Invalid username or password." });
         }
 
+        
+        const [account] = await db.execute(
+            "SELECT * FROM accounts WHERE user_id = ?",
+            [user.user_id]
+        );
+
+         if (account.length === 0) {
+            return res
+                .status(404)
+                .json({ message: "Account not found for this user." });  
+        }
+
+
         const token = jwt.sign(
-            { userId: user.id, username: user.username },
+            { userId: user.user_id, username: user.username }, 
             JWT_SECRET,
             { expiresIn: "1h" }
         );
@@ -174,7 +192,15 @@ app.post("/login", async (req, res) => {
         res.status(200).json({
             message: "Login successful!",
             token: token,
-            userId: user.id,
+            user_id: user.user_id,
+            full_name: user.full_name,
+            phone_number: user.phone_number,
+            age: user.age,
+            email: user.email,
+            username: user.username,
+            money: account[0].money, 
+            account_id: account[0].account_id,
+            transaction_pin: account[0].transaction_pin,
         });
     } catch (error) {
         console.error("Login error:", error);
@@ -213,7 +239,21 @@ app.get("/profile", async (req, res) => {
             return res.status(404).json({ message: "User not found." });
         }
 
-        res.status(200).json(users[0]);
+        const user = users[0];
+                
+        const [account] = await db.execute(
+            "SELECT * FROM accounts WHERE user_id = ?",
+            [userId]
+        );
+           if (account.length === 0) {
+            return res
+                .status(404)
+                .json({ message: "Account not found for this user." });  
+        }
+
+
+        res.status(200).json({...user, money: account[0].money, account_id: account[0].account_id,
+            transaction_pin: account[0].transaction_pin}); 
     } catch (error) {
         console.error("Profile error:", error);
         res.status(401).json({ message: "Invalid token." });
