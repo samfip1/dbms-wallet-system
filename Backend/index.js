@@ -12,19 +12,17 @@ const app = express();
 app.use(json());
 app.use(cors());
 
-const JWT_SECRET =
-    process.env.JWT_SECRET ||
-    "fiopawjefoiawnef9834ht89hvoiausndfoiashfeoiweiawdfshioawef";
+const JWT_SECRET = "fiopawjefoiawnef9834ht89hvoiausndfoiashfeoiweiawdfshioawef";
 
 let db;
 
 (async () => {
     try {
         db = await createConnection({
-            host: process.env.DB_HOST || "localhost",
-            user: process.env.DB_USER || "root",
-            password: process.env.DB_PASSWORD || "1234",
-            database: process.env.DB_DATABASE || "simple",
+            host: "localhost",
+            user: "root",
+            password: "1234",
+            database: "bank_management",
         });
 
         console.log("Connected to MySQL server successfully!");
@@ -111,6 +109,11 @@ app.post(
                 message: "User registered successfully!",
                 userId: userId,
                 token: token,
+                username: username,
+                email,
+                phone_number,
+                age,
+                full_name
             });
 
 
@@ -181,6 +184,42 @@ app.post("/login", async (req, res) => {
         });
     }
 });
+
+
+app.get("/profile", async (req, res) => {
+    const token = req.headers.authorization.split(" ")[1];
+
+    console.log(token)
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userId = decoded.userId;
+
+        if (!db) {
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
+        }
+
+        const [users] = await db.execute(
+            "SELECT * FROM users WHERE user_id = ?",
+            [userId]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json(users[0]);
+    } catch (error) {
+        console.error("Profile error:", error);
+        res.status(401).json({ message: "Invalid token." });
+    }
+})
+
 
 app.listen(3000, () => {
     console.log("listening in port 3000");
