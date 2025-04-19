@@ -6,6 +6,8 @@ import { config } from "dotenv";
 import mysql from "mysql2/promise";
 import { body, validationResult } from "express-validator";
 import cookieParser from "cookie-parser";
+import pkg from 'request-ip';
+const { getClientIp } = pkg; 
 import rateLimit from "express-rate-limit";
 config();
 const app = express();
@@ -59,7 +61,8 @@ app.use((err, req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-    res.send("hello");
+    var clientIp = getClientIp(req)     //get's client ip address -- test page
+    res.send(`Your IP Address is ${clientIp}.`)
 });
 
 app.post(
@@ -117,7 +120,7 @@ app.post(
             const saltRounds = 12;
             const hashedPassword = await hash(password, saltRounds);
 
-            // **CRITICAL: HASH THE TRANSACTION PIN**
+           
             const hashedTransactionPin = await hash(
                 transaction_pin,
                 saltRounds
@@ -175,6 +178,9 @@ app.post(
     }
 );
 
+
+
+
 app.post("/login", limiter, async (req, res) => {
     const { username, password } = req.body;
 
@@ -226,6 +232,15 @@ app.post("/login", limiter, async (req, res) => {
             { expiresIn: "1h" }
         );
 
+        var clientIp = getClientIp(req)
+        // res.send(`Your IP Address is ${clientIp}.`)
+        console.log(clientIp + " client ip");
+        const [loginActivity] = await db.execute(
+            "INSERT INTO login_activity (user_id, device_ip) VALUES (?, ?)",
+            [user.user_id, clientIp]
+        );
+        console.log(loginActivity + " login activity");
+
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -255,6 +270,44 @@ app.post("/login", limiter, async (req, res) => {
         });
     }
 });
+
+
+app.get("/user/loginActivity", async (req, res) => {
+    const token = req.cookies.token;
+    console.log(token);
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userId = decoded.userId;
+
+        if (!db) {
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
+        }
+
+        const [loginActivity] = await db.execute(
+            "SELECT * FROM login_activity WHERE user_id = ?",
+            [userId]
+        );
+
+        if (loginActivity.length === 0) {
+            return res.status(404).json({ message: "No login activity found." });
+        }
+
+        res.status(200).json({
+            loginActivity,
+        });
+    } catch (error) {
+        console.error("Login activity error:", error);
+        res.status(401).json({ message: "Invalid token." });
+    }
+})
+
+
 
 app.get("/profile", async (req, res) => {
     const token = req.cookies.token;
@@ -306,6 +359,9 @@ app.get("/profile", async (req, res) => {
         res.status(401).json({ message: "Invalid token." });
     }
 });
+
+
+
 
 app.post(
     "/update",
@@ -975,6 +1031,9 @@ app.post("/admin/FreezeMoney", async (req, res) => {
         });
     }
 });
+
+
+
 
 app.get("/admin/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
