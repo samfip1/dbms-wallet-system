@@ -11,7 +11,9 @@ import mysql from 'mysql2/promise';
 config();
 
 const app = express();
-app.use(json());
+
+app.use(express.json());
+
 app.use(
     cors({
         origin: "http://localhost:5173",
@@ -797,11 +799,98 @@ app.post("/admin/update", async (req, res) => {
     }
 });
 
+
+
+app.get("/admin/UsersList" , async ( req, res) => {
+    const token = req.cookies.token;
+    console.log(token);
+    if (!token) {
+        return res.status(401).json({
+            message: "Token not Provided",
+        });
+    }
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const adminId = decoded.admin;
+        console.log(adminId + " admin id");
+
+        if (!db) {
+            return res.status(500).json({ message: "Database connection failed." });
+        }
+        const [AllUsers] = await db.execute(
+            "Select * from users"
+        )
+        if (AllUsers.length === 0) {
+            return res.status(404).json({ message: "No users found." });
+        }
+        res.status(200).json({
+            AllUsers
+        })
+    }
+    catch(error) {
+        console.error("Error fetching users:", error);
+        return res.status(500).json({ message: "Error fetching users." });
+    }
+})
+
+app.post("/admin/blockUser", async (req, res) => {
+    const token = req.cookies.token;
+    const { userId, reason } = req.body;
+
+    if (!token) {
+        return res.status(401).json({
+            message: "Token not provided",
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const adminId = decoded.admin;
+        console.log(adminId + " admin id");
+
+        if (!db) {
+            return res.status(500).json({ message: "Database connection failed." });
+        }
+
+        // Check if user exists
+        const [userExists] = await db.execute(
+            "SELECT * FROM users WHERE user_id = ?",
+            [userId]
+        );
+
+        if (userExists.length === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Add to fraud_people table BEFORE deleting user
+        const query_fraud = "INSERT INTO fraud_people (user_id, reason) VALUES (?, ?)";
+        const [fraudEntry] = await db.execute(query_fraud, [userId, reason]);
+
+        // Now safely delete the user
+        const [deletedUser] = await db.execute(
+            "DELETE FROM users WHERE user_id = ?",
+            [userId]
+        );
+
+        res.status(200).json({
+            message: "User blocked successfully",
+            deletedUser,
+            fraudEntry,
+        });
+    } catch (error) {
+        console.error("Error in blockUser:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+});
+
+
+
+
+
 app.get("/admin/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
     res.status(200).json({ message: "Logged out successfully" });
 });
-
 app.listen(3000, () => {
     console.log("listening in port 3000");
 });
