@@ -6,13 +6,13 @@ import { config } from "dotenv";
 import mysql from "mysql2/promise";
 import { body, validationResult } from "express-validator";
 import cookieParser from "cookie-parser";
-import pkg from 'request-ip';
-const { getClientIp } = pkg; 
+import pkg from "request-ip";
+const { getClientIp } = pkg;
 import rateLimit from "express-rate-limit";
 config();
 const app = express();
-
 app.use(express.json());
+
 
 app.use(
     cors({
@@ -61,8 +61,8 @@ app.use((err, req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-    var clientIp = getClientIp(req)     //get's client ip address -- test page
-    res.send(`Your IP Address is ${clientIp}.`)
+    var clientIp = getClientIp(req); //get's client ip address -- test page
+    res.send(`Your IP Address is ${clientIp}.`);
 });
 
 app.post(
@@ -120,7 +120,6 @@ app.post(
             const saltRounds = 12;
             const hashedPassword = await hash(password, saltRounds);
 
-           
             const hashedTransactionPin = await hash(
                 transaction_pin,
                 saltRounds
@@ -139,7 +138,7 @@ app.post(
                 { expiresIn: "1h" }
             );
 
-            const initialMoney = Math.random()*489673497;
+            const initialMoney = Math.random() * 489673497;
 
             const [accountInsertResult] = await db.execute(
                 "INSERT INTO accounts (user_id, money, transaction_pin, number_of_transactions) VALUES (?, ?, ?, ?)",
@@ -177,9 +176,6 @@ app.post(
         }
     }
 );
-
-
-
 
 app.post("/login", limiter, async (req, res) => {
     const { username, password } = req.body;
@@ -232,7 +228,7 @@ app.post("/login", limiter, async (req, res) => {
             { expiresIn: "1h" }
         );
 
-        var clientIp = getClientIp(req)
+        var clientIp = getClientIp(req);
         // res.send(`Your IP Address is ${clientIp}.`)
         console.log(clientIp + " client ip");
         const [loginActivity] = await db.execute(
@@ -271,7 +267,6 @@ app.post("/login", limiter, async (req, res) => {
     }
 });
 
-
 app.get("/user/loginActivity", async (req, res) => {
     const token = req.cookies.token;
     console.log(token);
@@ -295,7 +290,9 @@ app.get("/user/loginActivity", async (req, res) => {
         );
 
         if (loginActivity.length === 0) {
-            return res.status(404).json({ message: "No login activity found." });
+            return res
+                .status(404)
+                .json({ message: "No login activity found." });
         }
 
         res.status(200).json({
@@ -305,9 +302,7 @@ app.get("/user/loginActivity", async (req, res) => {
         console.error("Login activity error:", error);
         res.status(401).json({ message: "Invalid token." });
     }
-})
-
-
+});
 
 app.get("/profile", async (req, res) => {
     const token = req.cookies.token;
@@ -359,9 +354,6 @@ app.get("/profile", async (req, res) => {
         res.status(401).json({ message: "Invalid token." });
     }
 });
-
-
-
 
 app.post(
     "/update",
@@ -445,12 +437,10 @@ app.post(
             });
         } catch (error) {
             console.log(error);
-            return res
-                .status(500)
-                .json({
-                    message: "Error updating username",
-                    error: error.message,
-                });
+            return res.status(500).json({
+                message: "Error updating username",
+                error: error.message,
+            });
         }
     }
 );
@@ -507,8 +497,6 @@ app.post("/transaction", async (req, res) => {
         const senderBalance = senderAccount[0].money;
         const storedTransactionPin = senderAccount[0].transaction_pin;
 
-
-
         const [receiverAccount] = await db.execute(
             "SELECT account_id, money FROM accounts WHERE user_id = ?",
             [receiverUser_id]
@@ -521,7 +509,6 @@ app.post("/transaction", async (req, res) => {
 
         const receiverAccountId = receiverAccount[0].account_id;
         const receiverBalance = receiverAccount[0].money;
-
 
         const validPin = await compare(transaction_pin, storedTransactionPin);
 
@@ -885,12 +872,10 @@ app.post(
             });
         } catch (error) {
             console.log(error);
-            return res
-                .status(500)
-                .json({
-                    message: "Error updating username",
-                    error: error.message,
-                });
+            return res.status(500).json({
+                message: "Error updating username",
+                error: error.message,
+            });
         }
     }
 );
@@ -1012,7 +997,7 @@ app.post("/admin/FreezeMoney", async (req, res) => {
         const user_money = await db.execute(
             "select money from accounts where user_id = ?",
             [userId]
-        )
+        );
         console.log(user_money);
         const freeze_query = await db.execute(
             "UPDATE ACCOUNTS SET money = 1818 WHERE USER_ID = ?",
@@ -1032,9 +1017,6 @@ app.post("/admin/FreezeMoney", async (req, res) => {
     }
 });
 
-
-
-
 app.get("/admin/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
     res.status(200).json({ message: "Logged out successfully" });
@@ -1042,3 +1024,4 @@ app.get("/admin/logout", (req, res) => {
 app.listen(3000, () => {
     console.log("listening in port 3000");
 });
+
