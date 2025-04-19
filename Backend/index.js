@@ -3,13 +3,11 @@ import cors from "cors";
 import { hash, compare } from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "dotenv";
-import { createConnection } from "mysql2/promise";
+import mysql from "mysql2/promise";
 import { body, validationResult } from "express-validator";
 import cookieParser from "cookie-parser";
-// const mysql = require('mysql2');
-import mysql from 'mysql2/promise';
+import rateLimit from "express-rate-limit";
 config();
-
 const app = express();
 
 app.use(express.json());
@@ -22,13 +20,24 @@ app.use(
 );
 app.use(cookieParser());
 
-const JWT_SECRET = "fiopawjefoiawnef9834ht89hvoiausndfoiashfeoiweiawdfshioawef";
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message:
+        "Too many requests from this IP, please try again after 15 minutes",
+});
+
+app.use(limiter);
+
+const JWT_SECRET =
+    process.env.JWT_SECRET ||
+    "fiopawjefoiawnef9834ht89hvoiausndfoiashfeoiweiawdfshioawef";
 
 let db;
 
 (async () => {
     try {
-        db = await mysql.createPool({
+        db = mysql.createPool({
             host: "localhost",
             user: "root",
             password: "1234",
@@ -105,8 +114,14 @@ app.post(
                     .status(409)
                     .json({ message: "Username or email already exists." });
             }
+            const saltRounds = 12;
+            const hashedPassword = await hash(password, saltRounds);
 
-            const hashedPassword = await hash(password, 12);
+            // **CRITICAL: HASH THE TRANSACTION PIN**
+            const hashedTransactionPin = await hash(
+                transaction_pin,
+                saltRounds
+            );
 
             const [result] = await db.execute(
                 "INSERT INTO users (username, password, full_name, phone_number, age, email) VALUES (?, ?, ?, ?, ?, ?)",
@@ -121,11 +136,11 @@ app.post(
                 { expiresIn: "1h" }
             );
 
-            const money = Math.random() * 85289354;
+            const initialMoney = Math.random()*489673497;
 
             const [accountInsertResult] = await db.execute(
                 "INSERT INTO accounts (user_id, money, transaction_pin, number_of_transactions) VALUES (?, ?, ?, ?)",
-                [userId, money, transaction_pin, 0]
+                [userId, initialMoney, hashedTransactionPin, 0]
             );
 
             const accountId = accountInsertResult.insertId;
@@ -134,7 +149,7 @@ app.post(
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
-                path: "/", // valid for full or entire domain
+                path: "/",
                 sameSite: "lax",
             });
 
@@ -147,7 +162,7 @@ app.post(
                 phone_number,
                 age,
                 full_name,
-                money,
+                money: initialMoney,
                 accountId,
             });
         } catch (error) {
@@ -160,7 +175,7 @@ app.post(
     }
 );
 
-app.post("/login", async (req, res) => {
+app.post("/login", limiter, async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -182,9 +197,7 @@ app.post("/login", async (req, res) => {
         );
 
         if (users.length === 0) {
-            return res
-                .status(401)
-                .json({ message: "Invalid username or password." });
+            return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const user = users[0];
@@ -193,9 +206,7 @@ app.post("/login", async (req, res) => {
         const passwordMatch = await compare(password, user.password);
 
         if (!passwordMatch) {
-            return res
-                .status(401)
-                .json({ message: "Invalid username or password." });
+            return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const [account] = await db.execute(
@@ -215,7 +226,6 @@ app.post("/login", async (req, res) => {
             { expiresIn: "1h" }
         );
 
-        //
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -297,79 +307,97 @@ app.get("/profile", async (req, res) => {
     }
 });
 
-app.post("/update", async (req, res) => {
-    const token = req.cookies.token;
-    const { newUsername } = req.body;
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({
-            message: "Token not Provided",
-        });
-    }
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const userId = decoded.userId;
-
-        console.log(userId);
-
-        if (!db) {
-            return res
-                .status(500)
-                .json({ message: "Database connection failed." });
+app.post(
+    "/update",
+    [
+        body("newUsername")
+            .isLength({ min: 3, max: 20 })
+            .withMessage("Username must be between 3 and 20 characters")
+            .escape(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
 
-        const [users] = await db.execute(
-            "SELECT * FROM users WHERE user_id = ?",
-            [userId]
-        );
+        const token = req.cookies.token;
+        const { newUsername } = req.body;
 
-        if (users.length === 0) {
-            return res.status(404).json({ message: "User not found." });
-        }
-
-        const [existingUsers] = await db.execute(
-            "SELECT * FROM users WHERE username = ?",
-            [newUsername]
-        );
-
-        if (existingUsers.length > 0) {
-            return res.status(400).json({
-                message:
-                    "New Username already taken, please choose another one",
+        if (!token) {
+            return res.status(401).json({
+                message: "Token not Provided",
             });
         }
 
-        const [updatedUsers] = await db.execute(
-            "UPDATE users SET username = ? WHERE user_id = ?",
-            [newUsername, userId]
-        );
-        console.log(updatedUsers);
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const userId = decoded.userId;
+            console.log(userId);
 
-        const newToken = jwt.sign(
-            { userId: userId, username: newUsername },
-            JWT_SECRET,
-            { expiresIn: "1h" }
-        );
+            if (!db) {
+                return res
+                    .status(500)
+                    .json({ message: "Database connection failed." });
+            }
 
-        res.cookie("token", newToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 3600000,
-            path: "/",
-            sameSite: "lax",
-        });
+            const [users] = await db.execute(
+                "SELECT * FROM users WHERE user_id = ?",
+                [userId]
+            );
+            console.log(users);
 
-        return res.status(200).json({
-            message: "Username Updated Successfully",
-        });
-    } catch (error) {
-        console.log(error);
-        return error;
+            if (users.length === 0) {
+                return res.status(404).json({ message: "User not found." });
+            }
+
+            const [existingUsers] = await db.execute(
+                "SELECT * FROM users WHERE username = ?",
+                [newUsername]
+            );
+
+            if (existingUsers.length > 0) {
+                return res.status(400).json({
+                    message:
+                        "New Username already taken, please choose another one",
+                });
+            }
+
+            const [updatedUsers] = await db.execute(
+                "UPDATE users SET username = ? WHERE user_id = ?",
+                [newUsername, userId]
+            );
+
+            console.log(updatedUsers);
+
+            const newToken = jwt.sign(
+                { userId: userId, username: newUsername },
+                JWT_SECRET,
+                { expiresIn: "1h" }
+            );
+
+            res.cookie("token", newToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 3600000,
+                path: "/",
+                sameSite: "lax",
+            });
+
+            return res.status(200).json({
+                message: "Username Updated Successfully",
+            });
+        } catch (error) {
+            console.log(error);
+            return res
+                .status(500)
+                .json({
+                    message: "Error updating username",
+                    error: error.message,
+                });
+        }
     }
-});
-
-
+);
 app.post("/transaction", async (req, res) => {
     const token = req.cookies.token;
     const { money, receiverUser_id, transaction_pin, comments } = req.body;
@@ -385,7 +413,9 @@ app.post("/transaction", async (req, res) => {
         const userId = decoded.userId;
 
         if (!db) {
-            return res.status(500).json({ message: "Database connection failed." });
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
         }
 
         const [users] = await db.execute(
@@ -400,8 +430,11 @@ app.post("/transaction", async (req, res) => {
             "SELECT * FROM users WHERE user_id = ?",
             [receiverUser_id]
         );
+        console.log(receiver);
         if (receiver.length === 0) {
-            return res.status(404).json({ message: "Receiver User not found." });
+            return res
+                .status(404)
+                .json({ message: "Receiver User not found." });
         }
 
         const [senderAccount] = await db.execute(
@@ -409,26 +442,37 @@ app.post("/transaction", async (req, res) => {
             [userId]
         );
         if (senderAccount.length === 0) {
-            return res.status(404).json({ message: "Sender Account not found." });
+            return res
+                .status(404)
+                .json({ message: "Sender Account not found." });
         }
 
         const senderAccountId = senderAccount[0].account_id;
         const senderBalance = senderAccount[0].money;
         const storedTransactionPin = senderAccount[0].transaction_pin;
 
+
+
         const [receiverAccount] = await db.execute(
             "SELECT account_id, money FROM accounts WHERE user_id = ?",
             [receiverUser_id]
         );
         if (receiverAccount.length === 0) {
-            return res.status(404).json({ message: "Receiver Account not found." });
+            return res
+                .status(404)
+                .json({ message: "Receiver Account not found." });
         }
 
         const receiverAccountId = receiverAccount[0].account_id;
         const receiverBalance = receiverAccount[0].money;
 
-        if (transaction_pin !== storedTransactionPin) {
-            return res.status(401).json({ message: "Invalid transaction PIN." });
+
+        const validPin = await compare(transaction_pin, storedTransactionPin);
+
+        if (!validPin) {
+            return res
+                .status(401)
+                .json({ message: "Invalid transaction PIN." });
         }
 
         const MINIMUM_BALANCE = 5000;
@@ -439,7 +483,7 @@ app.post("/transaction", async (req, res) => {
 
         if (senderBalance - money < MINIMUM_BALANCE) {
             return res.status(400).json({
-                message: "Minimum balance amount is ${MINIMUM_BALANCE}",
+                message: `Minimum balance amount is ${MINIMUM_BALANCE}`,
             });
         }
 
@@ -496,20 +540,16 @@ app.post("/transaction", async (req, res) => {
         } finally {
             if (conn) conn.release();
         }
-
     } catch (error) {
         console.error("Error:", error);
         return res.status(500).json({ message: "Error Occurred" });
     }
 });
 
-
 app.get("/user/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
     res.status(200).json({ message: "Logged out successfully" });
 });
-
-
 
 app.post(
     "/admin/signup",
@@ -532,14 +572,7 @@ app.post(
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const {
-            username,
-            password,
-            name,
-            phone,
-            age,
-            email,
-        } = req.body;
+        const { username, password, name, phone, age, email } = req.body;
 
         try {
             if (!db) {
@@ -579,7 +612,7 @@ app.post(
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
-                path: "/", // valid for full or entire domain
+                path: "/",
                 sameSite: "lax",
             });
 
@@ -592,7 +625,7 @@ app.post(
                 phone,
                 age,
                 name,
-                adminid
+                adminid,
             });
         } catch (error) {
             console.error("Registration error:", error);
@@ -604,10 +637,7 @@ app.post(
     }
 );
 
-
-
-
-app.post("/admin/login", async (req, res) => {
+app.post("/admin/login", limiter, async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -651,7 +681,6 @@ app.post("/admin/login", async (req, res) => {
             { expiresIn: "1h" }
         );
 
-        //
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -678,10 +707,6 @@ app.post("/admin/login", async (req, res) => {
         });
     }
 });
-
-
-
-
 
 app.get("/admin/profile", async (req, res) => {
     const token = req.cookies.token;
@@ -716,7 +741,7 @@ app.get("/admin/profile", async (req, res) => {
         console.log(addmin);
 
         res.status(200).json({
-            addmin
+            addmin,
         });
     } catch (error) {
         console.error("Profile error:", error);
@@ -724,84 +749,97 @@ app.get("/admin/profile", async (req, res) => {
     }
 });
 
-
-
-
-app.post("/admin/update", async (req, res) => {
-    const token = req.cookies.token;
-    const { newUsername } = req.body;
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({
-            message: "Token not Provided",
-        });
-    }
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const adminId = decoded.admin;
-
-        console.log(adminId);
-
-        if (!db) {
-            return res
-                .status(500)
-                .json({ message: "Database connection failed." });
+app.post(
+    "/admin/update",
+    [
+        body("newUsername")
+            .isLength({ min: 3, max: 20 })
+            .withMessage("Username must be between 3 and 20 characters")
+            .escape(),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
         }
+        const token = req.cookies.token;
+        const { newUsername } = req.body;
 
-        const [admin] = await db.execute(
-            "SELECT * FROM admin WHERE admin_id = ?",
-            [adminId]
-        );
-
-        if (admin.length === 0) {
-            return res.status(404).json({ message: "User not found." });
-        }
-
-        const [existingadmin] = await db.execute(
-            "SELECT * FROM admin WHERE username = ?",
-            [newUsername]
-        );
-
-        if (existingadmin.length > 0) {
-            return res.status(400).json({
-                message:
-                    "New Username already taken, please choose another one",
+        if (!token) {
+            return res.status(401).json({
+                message: "Token not Provided",
             });
         }
 
-        const [updatedadmin] = await db.execute(
-            "UPDATE admin SET username = ? WHERE admin_id = ?",
-            [newUsername, adminId]
-        );
-        console.log(updatedadmin);
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            const adminId = decoded.admin;
 
-        const newToken = jwt.sign(
-            { adminId: adminId, username: newUsername },
-            JWT_SECRET,
-            { expiresIn: "1h" }
-        );
+            console.log(adminId);
 
-        res.cookie("token", newToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            maxAge: 3600000,
-            path: "/",
-            sameSite: "lax",
-        });
+            if (!db) {
+                return res
+                    .status(500)
+                    .json({ message: "Database connection failed." });
+            }
 
-        return res.status(200).json({
-            message: "Username Updated Successfully"
-        });
-    } catch (error) {
-        console.log(error);
-        return error;
+            const [admin] = await db.execute(
+                "SELECT * FROM admin WHERE admin_id = ?",
+                [adminId]
+            );
+
+            if (admin.length === 0) {
+                return res.status(404).json({ message: "User not found." });
+            }
+
+            const [existingadmin] = await db.execute(
+                "SELECT * FROM admin WHERE username = ?",
+                [newUsername]
+            );
+
+            if (existingadmin.length > 0) {
+                return res.status(400).json({
+                    message:
+                        "New Username already taken, please choose another one",
+                });
+            }
+
+            const [updatedadmin] = await db.execute(
+                "UPDATE admin SET username = ? WHERE admin_id = ?",
+                [newUsername, adminId]
+            );
+            console.log(updatedadmin);
+
+            const newToken = jwt.sign(
+                { adminId: adminId, username: newUsername },
+                JWT_SECRET,
+                { expiresIn: "1h" }
+            );
+
+            res.cookie("token", newToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                maxAge: 3600000,
+                path: "/",
+                sameSite: "lax",
+            });
+
+            return res.status(200).json({
+                message: "Username Updated Successfully",
+            });
+        } catch (error) {
+            console.log(error);
+            return res
+                .status(500)
+                .json({
+                    message: "Error updating username",
+                    error: error.message,
+                });
+        }
     }
-});
+);
 
-
-
-app.get("/admin/UsersList" , async ( req, res) => {
+app.get("/admin/UsersList", async (req, res) => {
     const token = req.cookies.token;
     console.log(token);
     if (!token) {
@@ -815,23 +853,22 @@ app.get("/admin/UsersList" , async ( req, res) => {
         console.log(adminId + " admin id");
 
         if (!db) {
-            return res.status(500).json({ message: "Database connection failed." });
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
         }
-        const [AllUsers] = await db.execute(
-            "Select * from users"
-        )
+        const [AllUsers] = await db.execute("Select * from users");
         if (AllUsers.length === 0) {
             return res.status(404).json({ message: "No users found." });
         }
         res.status(200).json({
-            AllUsers
-        })
-    }
-    catch(error) {
+            AllUsers,
+        });
+    } catch (error) {
         console.error("Error fetching users:", error);
         return res.status(500).json({ message: "Error fetching users." });
     }
-})
+});
 
 app.post("/admin/blockUser", async (req, res) => {
     const token = req.cookies.token;
@@ -849,10 +886,11 @@ app.post("/admin/blockUser", async (req, res) => {
         console.log(adminId + " admin id");
 
         if (!db) {
-            return res.status(500).json({ message: "Database connection failed." });
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
         }
 
-        // Check if user exists
         const [userExists] = await db.execute(
             "SELECT * FROM users WHERE user_id = ?",
             [userId]
@@ -862,11 +900,10 @@ app.post("/admin/blockUser", async (req, res) => {
             return res.status(404).json({ message: "User not found." });
         }
 
-        // Add to fraud_people table BEFORE deleting user
-        const query_fraud = "INSERT INTO fraud_people (user_id, reason) VALUES (?, ?)";
+        const query_fraud =
+            "INSERT INTO fraud_people (user_id, reason) VALUES (?, ?)";
         const [fraudEntry] = await db.execute(query_fraud, [userId, reason]);
 
-        // Now safely delete the user
         const [deletedUser] = await db.execute(
             "DELETE FROM users WHERE user_id = ?",
             [userId]
@@ -879,13 +916,65 @@ app.post("/admin/blockUser", async (req, res) => {
         });
     } catch (error) {
         console.error("Error in blockUser:", error);
-        res.status(500).json({ message: "Internal Server Error", error: error.message });
+        res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message,
+        });
     }
 });
 
+app.post("/admin/FreezeMoney", async (req, res) => {
+    const token = req.cookies.token;
+    const { userId } = req.body;
 
+    if (!token) {
+        return res.status(401).json({
+            message: "Token not provided",
+        });
+    }
 
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const adminId = decoded.admin;
+        console.log(adminId + " admin id");
 
+        if (!db) {
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
+        }
+
+        const [userExists] = await db.execute(
+            "SELECT * FROM users WHERE user_id = ?",
+            [userId]
+        );
+
+        if (userExists.length === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const user_money = await db.execute(
+            "select money from accounts where user_id = ?",
+            [userId]
+        )
+        console.log(user_money);
+        const freeze_query = await db.execute(
+            "UPDATE ACCOUNTS SET money = 1818 WHERE USER_ID = ?",
+            [userId]
+        );
+
+        res.status(200).json({
+            message: "Money Deducted successfully",
+            freeze_query,
+        });
+    } catch (error) {
+        console.error("Error in Money Deducting:", error);
+        res.status(500).json({
+            message: "Internal Server Error",
+            error: error.message,
+        });
+    }
+});
 
 app.get("/admin/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
