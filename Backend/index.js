@@ -14,12 +14,12 @@ const app = express();
 app.use(express.json());
 
 
-app.use(
-    cors({
-        origin: "http://localhost:5173",
-        credentials: true,
-    })
-);
+app.use(cors({
+    origin: 'http://localhost:5173',
+    methods: 'GET,POST,PUT,DELETE',
+    credentials: true
+}));
+
 app.use(cookieParser());
 
 const limiter = rateLimit({
@@ -61,7 +61,7 @@ app.use((err, req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-    var clientIp = getClientIp(req); //get's client ip address -- test page
+    var clientIp = getClientIp(req); 
     res.send(`Your IP Address is ${clientIp}.`);
 });
 
@@ -148,7 +148,6 @@ app.post(
             const accountId = accountInsertResult.insertId;
 
             res.cookie("token", token, {
-                httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
                 path: "/",
@@ -238,7 +237,6 @@ app.post("/login", limiter, async (req, res) => {
         console.log(loginActivity + " login activity");
 
         res.cookie("token", token, {
-            httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             maxAge: 3600000,
             path: "/",
@@ -425,7 +423,6 @@ app.post(
             );
 
             res.cookie("token", newToken, {
-                httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
                 path: "/",
@@ -652,7 +649,6 @@ app.post(
             );
 
             res.cookie("token", token, {
-                httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
                 path: "/",
@@ -725,7 +721,6 @@ app.post("/admin/login", limiter, async (req, res) => {
         );
 
         res.cookie("token", token, {
-            httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             maxAge: 3600000,
             path: "/",
@@ -860,7 +855,6 @@ app.post(
             );
 
             res.cookie("token", newToken, {
-                httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 maxAge: 3600000,
                 path: "/",
