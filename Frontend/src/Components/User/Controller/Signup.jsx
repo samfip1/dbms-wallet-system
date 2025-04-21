@@ -189,7 +189,6 @@ const UserSignUp = () => {
                         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                     </div>
 
-                    {/* Email */}
                     <div className="space-y-1">
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                             Email
@@ -207,8 +206,6 @@ const UserSignUp = () => {
                         />
                         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                     </div>
-
-                    {/* Username + Phone */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -247,7 +244,6 @@ const UserSignUp = () => {
                         </div>
                     </div>
 
-                    {/* Age */}
                     <div className="space-y-1">
                         <label htmlFor="age" className="block text-sm font-medium text-gray-700">
                             Age
@@ -266,7 +262,6 @@ const UserSignUp = () => {
                         {errors.age && <p className="text-red-500 text-xs mt-1">{errors.age}</p>}
                     </div>
 
-                    {/* Password */}
                     <div className="space-y-1">
                         <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                             Password
@@ -285,7 +280,6 @@ const UserSignUp = () => {
                         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                     </div>
 
-                    {/* Confirm Password */}
                     <div className="space-y-1">
                         <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                             Confirm Password
@@ -305,8 +299,6 @@ const UserSignUp = () => {
                             <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
                         )}
                     </div>
-
-                    {/* Transaction PIN */}
                     <div className="space-y-1">
                         <label htmlFor="transaction_Pin" className="block text-sm font-medium text-gray-700">
                             Transaction PIN (4 digits)
@@ -328,7 +320,6 @@ const UserSignUp = () => {
                         )}
                     </div>
 
-                    {/* Submit */}
                     <button
                         type="submit"
                         className={`w-full py-3 px-4 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
