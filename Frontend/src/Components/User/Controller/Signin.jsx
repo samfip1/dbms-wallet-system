@@ -7,7 +7,7 @@ const UserSignIn = () => {
 
     const [formData, setFormData] = useState({
         username: "",
-        password: ""
+        password: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -73,7 +73,9 @@ const UserSignIn = () => {
                 }
             );
 
-            setSuccessMessage("Successfully signed in! Redirecting to dashboard...");
+            setSuccessMessage(
+                "Successfully signed in! Redirecting to dashboard..."
+            );
 
             setFormData({
                 username: "",
@@ -87,7 +89,7 @@ const UserSignIn = () => {
             console.error("API Error:", error);
             setApiError(
                 error.response?.data?.message ||
-                "An unexpected error occurred. Please try again."
+                    "An unexpected error occurred. Please try again."
             );
         } finally {
             setIsLoading(false);
@@ -114,33 +116,38 @@ const UserSignIn = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-         
-                    {/* Username + Phone */}
-
-                        <div className="space-y-1">
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                Username
-                            </label>
-                            <input
-                                type="text"
-                                id="username"
-                                name="username"
-                                value={formData.username}
-                                onChange={handleChange}
-                                placeholder="Choose a username"
-                                className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                    errors.username ? "border-red-500" : "border-gray-300"
-                                }`}
-                            />
-                            {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
-                        </div>
-
-                        
-
-                    
-                    {/* Password */}
                     <div className="space-y-1">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                        <label
+                            htmlFor="username"
+                            className="block text-sm font-medium text-gray-700"
+                        >
+                            Username
+                        </label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleChange}
+                            placeholder="Choose a username"
+                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                errors.username
+                                    ? "border-red-500"
+                                    : "border-gray-300"
+                            }`}
+                        />
+                        {errors.username && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.username}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="space-y-1">
+                        <label
+                            htmlFor="password"
+                            className="block text-sm font-medium text-gray-700"
+                        >
                             Password
                         </label>
                         <input
@@ -151,19 +158,24 @@ const UserSignIn = () => {
                             onChange={handleChange}
                             placeholder="Create a password"
                             className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.password ? "border-red-500" : "border-gray-300"
+                                errors.password
+                                    ? "border-red-500"
+                                    : "border-gray-300"
                             }`}
                         />
-                        {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                        {errors.password && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.password}
+                            </p>
+                        )}
                     </div>
 
-                    
-
-                    {/* Submit */}
                     <button
                         type="submit"
                         className={`w-full py-3 px-4 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                            isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
+                            isLoading
+                                ? "bg-blue-300 cursor-not-allowed"
+                                : "bg-blue-500 hover:bg-blue-600"
                         }`}
                         disabled={isLoading}
                     >
