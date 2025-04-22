@@ -1,6 +1,6 @@
-import axios from "axios";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const UserSignIn = () => {
     const navigate = useNavigate();
@@ -60,17 +60,12 @@ const UserSignIn = () => {
 
         try {
             const response = await axios.post(
-                "http://localhost:3000/login",
+                "/login", 
                 {
                     username: formData.username,
                     password: formData.password,
-                },
-                //whenever 400 request comes it's likely the parameter we are sending are not correct
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
                 }
+                //whenever 400 request comes it's likely the parameter we are sending are not correct
             );
 
             setSuccessMessage(
@@ -83,7 +78,7 @@ const UserSignIn = () => {
             });
 
             setTimeout(() => {
-                navigate("/dashboard"); // Redirect to the dashboard after 2 seconds
+                navigate("/dashboard");
             }, 1458);
         } catch (error) {
             console.error("API Error:", error);
@@ -179,7 +174,7 @@ const UserSignIn = () => {
                         }`}
                         disabled={isLoading}
                     >
-                        {isLoading ? "Logging Account..." : "Sign Up"}
+                        {isLoading ? "Logging Account..." : "Sign In"}
                     </button>
                 </form>
 

@@ -1,4 +1,4 @@
-import express, { json } from "express";
+import express from "express";
 import cors from "cors";
 import { hash, compare } from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -9,18 +9,24 @@ import cookieParser from "cookie-parser";
 import pkg from "request-ip";
 const { getClientIp } = pkg;
 import rateLimit from "express-rate-limit";
+import { randomBytes } from "crypto";
+
 config();
+
 const app = express();
 app.use(express.json());
 
 
-app.use(cors({
-    origin: 'http://localhost:5173',
-    methods: 'GET,POST,PUT,DELETE',
-    credentials: true
-}));
+app.use(
+    cors({
+        origin: "http://localhost:5173",
+        methods: "GET,POST,PUT,DELETE",
+        credentials: true,
+    })
+);
 
 app.use(cookieParser());
+
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -31,12 +37,16 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-const JWT_SECRET =
-    process.env.JWT_SECRET ||
-    "fiopawjefoiawnef9834ht89hvoiausndfoiashfeoiweiawdfshioawef";
+
+const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString("hex");
+if (process.env.NODE_ENV === "development" && !process.env.JWT_SECRET) {
+    console.warn(
+        "WARNING: No JWT_SECRET environment variable set. Using a randomly generated secret.  DO NOT DO THIS IN PRODUCTION."
+    );
+}
+
 
 let db;
-
 (async () => {
     try {
         db = mysql.createPool({
@@ -49,9 +59,58 @@ let db;
         console.log("Connected to MySQL server successfully!");
     } catch (error) {
         console.error("Database connection error:", error);
+        process.exit(1);
     }
 })();
 
+
+const authenticateToken = (req, res, next) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        return res
+            .status(401)
+            .json({ message: "Unauthorized: No token provided" });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res
+                .status(403)
+                .json({ message: "Forbidden: Invalid token" });
+        }
+
+        req.user = decoded; // Store decoded user information in the request object
+        next(); // Proceed to the next middleware or route handler
+    });
+};
+
+
+const authenticateAdmin = (req, res, next) => {
+    const token = req.cookies.token;
+
+    if (!token) {
+        return res
+            .status(401)
+            .json({ message: "Unauthorized: No token provided" });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res
+                .status(403)
+                .json({ message: "Forbidden: Invalid token" });
+        }
+        if (!decoded.adminId) {
+            return res.status(403).json({ message: "Forbidden: Not Admin" });
+        }
+
+        req.admin = decoded; 
+        next();
+    });
+};
+
+// Error Handling Middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
@@ -61,10 +120,11 @@ app.use((err, req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-    var clientIp = getClientIp(req); 
+    var clientIp = getClientIp(req);
     res.send(`Your IP Address is ${clientIp}.`);
 });
 
+// User Signup Route
 app.post(
     "/user/signup",
     [
@@ -148,7 +208,8 @@ app.post(
             const accountId = accountInsertResult.insertId;
 
             res.cookie("token", token, {
-                secure: process.env.NODE_ENV === "production",
+                secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+                httpOnly: true, // Make the cookie accessible only by the server
                 maxAge: 3600000,
                 path: "/",
                 sameSite: "lax",
@@ -176,6 +237,7 @@ app.post(
     }
 );
 
+// User Login Route
 app.post("/login", limiter, async (req, res) => {
     const { username, password } = req.body;
 
@@ -202,7 +264,6 @@ app.post("/login", limiter, async (req, res) => {
         }
 
         const user = users[0];
-        console.log(user);
 
         const passwordMatch = await compare(password, user.password);
 
@@ -228,16 +289,14 @@ app.post("/login", limiter, async (req, res) => {
         );
 
         var clientIp = getClientIp(req);
-        // res.send(`Your IP Address is ${clientIp}.`)
-        console.log(clientIp + " client ip");
         const [loginActivity] = await db.execute(
             "INSERT INTO login_activity (user_id, device_ip) VALUES (?, ?)",
             [user.user_id, clientIp]
         );
-        console.log(loginActivity + " login activity");
 
         res.cookie("token", token, {
             secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
             maxAge: 3600000,
             path: "/",
             sameSite: "lax",
@@ -265,16 +324,10 @@ app.post("/login", limiter, async (req, res) => {
     }
 });
 
-app.get("/user/loginActivity", async (req, res) => {
-    const token = req.cookies.token;
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
+// User Login Activity (Protected Route)
+app.get("/user/loginActivity", authenticateToken, async (req, res) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const userId = decoded.userId;
+        const userId = req.user.userId;
 
         if (!db) {
             return res
@@ -298,21 +351,17 @@ app.get("/user/loginActivity", async (req, res) => {
         });
     } catch (error) {
         console.error("Login activity error:", error);
-        res.status(401).json({ message: "Invalid token." });
+        res.status(500).json({
+            message: "Failed to retrieve login activity.",
+            error: error.message,
+        });
     }
 });
 
-app.get("/profile", async (req, res) => {
-    const token = req.cookies.token;
-
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
+// User Profile Route (Protected Route)
+app.get("/profile", authenticateToken, async (req, res) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const userId = decoded.userId;
+        const userId = req.user.userId;
 
         if (!db) {
             return res
@@ -349,12 +398,17 @@ app.get("/profile", async (req, res) => {
         });
     } catch (error) {
         console.error("Profile error:", error);
-        res.status(401).json({ message: "Invalid token." });
+        res.status(500).json({
+            message: "Failed to retrieve profile.",
+            error: error.message,
+        }); 
     }
 });
 
+// Update Username Route (Protected Route)
 app.post(
     "/update",
+    authenticateToken,
     [
         body("newUsername")
             .isLength({ min: 3, max: 20 })
@@ -367,20 +421,10 @@ app.post(
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const token = req.cookies.token;
         const { newUsername } = req.body;
-
-        if (!token) {
-            return res.status(401).json({
-                message: "Token not Provided",
-            });
-        }
+        const userId = req.user.userId; //Using userId from the decoded token.
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            const userId = decoded.userId;
-            console.log(userId);
-
             if (!db) {
                 return res
                     .status(500)
@@ -391,7 +435,6 @@ app.post(
                 "SELECT * FROM users WHERE user_id = ?",
                 [userId]
             );
-            console.log(users);
 
             if (users.length === 0) {
                 return res.status(404).json({ message: "User not found." });
@@ -414,8 +457,6 @@ app.post(
                 [newUsername, userId]
             );
 
-            console.log(updatedUsers);
-
             const newToken = jwt.sign(
                 { userId: userId, username: newUsername },
                 JWT_SECRET,
@@ -424,6 +465,7 @@ app.post(
 
             res.cookie("token", newToken, {
                 secure: process.env.NODE_ENV === "production",
+                httpOnly: true,
                 maxAge: 3600000,
                 path: "/",
                 sameSite: "lax",
@@ -433,7 +475,7 @@ app.post(
                 message: "Username Updated Successfully",
             });
         } catch (error) {
-            console.log(error);
+            console.error("Error updating username:", error);
             return res.status(500).json({
                 message: "Error updating username",
                 error: error.message,
@@ -441,20 +483,15 @@ app.post(
         }
     }
 );
-app.post("/transaction", async (req, res) => {
-    const token = req.cookies.token;
-    const { money, receiverUser_id, transaction_pin, comments } = req.body;
 
-    if (!token) {
-        return res.status(401).json({ message: "Token not Provided" });
-    }
+// Transaction Route (Protected Route)
+app.post("/transaction", authenticateToken, async (req, res) => {
+    const { money, receiverUser_id, transaction_pin, comments } = req.body;
+    const userId = req.user.userId; // Get userId from token
 
     let conn;
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const userId = decoded.userId;
-
         if (!db) {
             return res
                 .status(500)
@@ -473,7 +510,7 @@ app.post("/transaction", async (req, res) => {
             "SELECT * FROM users WHERE user_id = ?",
             [receiverUser_id]
         );
-        console.log(receiver);
+
         if (receiver.length === 0) {
             return res
                 .status(404)
@@ -586,11 +623,13 @@ app.post("/transaction", async (req, res) => {
     }
 });
 
+// Logout Route
 app.get("/user/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
     res.status(200).json({ message: "Logged out successfully" });
 });
 
+// Admin Signup Route
 app.post(
     "/admin/signup",
     [
@@ -640,23 +679,23 @@ app.post(
             );
 
             const adminid = result.insertId;
-            console.log(adminid);
 
             const token = jwt.sign(
-                { adminid: adminid, username: username },
+                { adminId: adminid, username: username },
                 JWT_SECRET,
                 { expiresIn: "1h" }
             );
 
             res.cookie("token", token, {
                 secure: process.env.NODE_ENV === "production",
+                httpOnly: true,
                 maxAge: 3600000,
                 path: "/",
                 sameSite: "lax",
             });
 
             res.status(201).json({
-                message: "User registered successfully!",
+                message: "Admin registered successfully!",
                 adminid: adminid,
                 token: token,
                 username: username,
@@ -664,18 +703,18 @@ app.post(
                 phone,
                 age,
                 name,
-                adminid,
             });
         } catch (error) {
             console.error("Registration error:", error);
             res.status(500).json({
-                message: "Failed to register user.",
+                message: "Failed to register Admin.",
                 error: error.message,
             });
         }
     }
 );
 
+// Admin Login Route
 app.post("/admin/login", limiter, async (req, res) => {
     const { username, password } = req.body;
 
@@ -704,7 +743,6 @@ app.post("/admin/login", limiter, async (req, res) => {
         }
 
         const admmin = admin[0];
-        console.log(admmin);
 
         const passwordMatch = await compare(password, admmin.password);
 
@@ -715,27 +753,28 @@ app.post("/admin/login", limiter, async (req, res) => {
         }
 
         const token = jwt.sign(
-            { admin: admmin.admin_id, username: admmin.username },
+            { adminId: admmin.admin_id, username: admmin.username },
             JWT_SECRET,
             { expiresIn: "1h" }
         );
 
         res.cookie("token", token, {
             secure: process.env.NODE_ENV === "production",
+            httpOnly: true,
             maxAge: 3600000,
             path: "/",
             sameSite: "lax",
         });
 
         res.status(200).json({
-            message: "Login successful!",
+            message: "Admin Login successful!",
             token: token,
-            admin,
-            name: admin.full_name,
-            phone_number: admin.phone_number,
-            age: admin.age,
-            email: admin.email,
-            username: admin.username,
+            adminId: admmin.admin_id,
+            name: admmin.name,
+            phone_number: admmin.phone,
+            age: admmin.age,
+            email: admmin.email,
+            username: admmin.username,
         });
     } catch (error) {
         console.error("Login error:", error);
@@ -746,18 +785,10 @@ app.post("/admin/login", limiter, async (req, res) => {
     }
 });
 
-app.get("/admin/profile", async (req, res) => {
-    const token = req.cookies.token;
-
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
+// Admin Profile Route (Protected Route)
+app.get("/admin/profile", authenticateAdmin, async (req, res) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const adminId = decoded.admin;
-        console.log(adminId + " admin id");
+        const adminId = req.admin.adminId;
 
         if (!db) {
             return res
@@ -769,26 +800,29 @@ app.get("/admin/profile", async (req, res) => {
             "SELECT * FROM admin WHERE admin_id = ?",
             [adminId]
         );
-        console.log(admin);
 
         if (admin.length === 0) {
-            return res.status(404).json({ message: "User not found." });
+            return res.status(404).json({ message: "Admin not found." });
         }
 
         const addmin = admin[0];
-        console.log(addmin);
 
         res.status(200).json({
             addmin,
         });
     } catch (error) {
         console.error("Profile error:", error);
-        res.status(401).json({ message: "Invalid token." });
+        res.status(500).json({
+            message: "Failed to retrieve admin profile",
+            error: error.message,
+        });
     }
 });
 
+// Admin Update Route (Protected Route)
 app.post(
     "/admin/update",
+    authenticateAdmin,
     [
         body("newUsername")
             .isLength({ min: 3, max: 20 })
@@ -800,21 +834,11 @@ app.post(
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        const token = req.cookies.token;
-        const { newUsername } = req.body;
 
-        if (!token) {
-            return res.status(401).json({
-                message: "Token not Provided",
-            });
-        }
+        const { newUsername } = req.body;
+        const adminId = req.admin.adminId;
 
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            const adminId = decoded.admin;
-
-            console.log(adminId);
-
             if (!db) {
                 return res
                     .status(500)
@@ -827,7 +851,7 @@ app.post(
             );
 
             if (admin.length === 0) {
-                return res.status(404).json({ message: "User not found." });
+                return res.status(404).json({ message: "Admin not found." });
             }
 
             const [existingadmin] = await db.execute(
@@ -846,7 +870,6 @@ app.post(
                 "UPDATE admin SET username = ? WHERE admin_id = ?",
                 [newUsername, adminId]
             );
-            console.log(updatedadmin);
 
             const newToken = jwt.sign(
                 { adminId: adminId, username: newUsername },
@@ -856,6 +879,7 @@ app.post(
 
             res.cookie("token", newToken, {
                 secure: process.env.NODE_ENV === "production",
+                httpOnly: true,
                 maxAge: 3600000,
                 path: "/",
                 sameSite: "lax",
@@ -865,7 +889,7 @@ app.post(
                 message: "Username Updated Successfully",
             });
         } catch (error) {
-            console.log(error);
+            console.error("Admin error updating username:", error);
             return res.status(500).json({
                 message: "Error updating username",
                 error: error.message,
@@ -874,19 +898,9 @@ app.post(
     }
 );
 
-app.get("/admin/UsersList", async (req, res) => {
-    const token = req.cookies.token;
-    console.log(token);
-    if (!token) {
-        return res.status(401).json({
-            message: "Token not Provided",
-        });
-    }
+// Admin User List Route (Protected Route)
+app.get("/admin/UsersList", authenticateAdmin, async (req, res) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const adminId = decoded.admin;
-        console.log(adminId + " admin id");
-
         if (!db) {
             return res
                 .status(500)
@@ -905,21 +919,11 @@ app.get("/admin/UsersList", async (req, res) => {
     }
 });
 
-app.post("/admin/blockUser", async (req, res) => {
-    const token = req.cookies.token;
+// Admin Block User Route (Protected Route)
+app.post("/admin/blockUser", authenticateAdmin, async (req, res) => {
     const { userId, reason } = req.body;
 
-    if (!token) {
-        return res.status(401).json({
-            message: "Token not provided",
-        });
-    }
-
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const adminId = decoded.admin;
-        console.log(adminId + " admin id");
-
         if (!db) {
             return res
                 .status(500)
@@ -958,21 +962,11 @@ app.post("/admin/blockUser", async (req, res) => {
     }
 });
 
-app.post("/admin/FreezeMoney", async (req, res) => {
-    const token = req.cookies.token;
+// Admin Freeze Money Route (Protected Route)
+app.post("/admin/FreezeMoney", authenticateAdmin, async (req, res) => {
     const { userId } = req.body;
 
-    if (!token) {
-        return res.status(401).json({
-            message: "Token not provided",
-        });
-    }
-
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const adminId = decoded.admin;
-        console.log(adminId + " admin id");
-
         if (!db) {
             return res
                 .status(500)
@@ -992,7 +986,7 @@ app.post("/admin/FreezeMoney", async (req, res) => {
             "select money from accounts where user_id = ?",
             [userId]
         );
-        console.log(user_money);
+
         const freeze_query = await db.execute(
             "UPDATE ACCOUNTS SET money = 1818 WHERE USER_ID = ?",
             [userId]
@@ -1011,10 +1005,33 @@ app.post("/admin/FreezeMoney", async (req, res) => {
     }
 });
 
+// Verify Route (For Frontend - check if token is valid)
+app.get("/verify", (req, res) => {
+    const token = req.cookies.token;
+    if (!token) {
+        return res
+            .status(401)
+            .json({ message: "Unauthorized: No token found" });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        return res
+            .status(200)
+            .json({ message: "Token is valid", userId: decoded.userId });
+    } catch (error) {
+        console.error("Token verification error:", error);
+        return res.status(401).json({ message: "Invalid token" });
+    }
+});
+
+// Admin Logout Route
 app.get("/admin/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
-    res.status(200).json({ message: "Logged out successfully" });
+    res.status(200).json({ message: "Admin logged out successfully" });
 });
+
+// Start the server
 app.listen(3000, () => {
     console.log("listening in port 3000");
 });
