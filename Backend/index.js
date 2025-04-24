@@ -38,12 +38,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 
-const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString("hex");
-if (process.env.NODE_ENV === "development" && !process.env.JWT_SECRET) {
-    console.warn(
-        "WARNING: No JWT_SECRET environment variable set. Using a randomly generated secret.  DO NOT DO THIS IN PRODUCTION."
-    );
-}
+const JWT_SECRET = "fnueoauirfn4983th698hfaosidfjaosidtj9348thawofiasjdofj"
 
 
 let db;
@@ -177,6 +172,7 @@ app.post(
                     .status(409)
                     .json({ message: "Username or email already exists." });
             }
+
             const saltRounds = 12;
             const hashedPassword = await hash(password, saltRounds);
 
@@ -206,6 +202,11 @@ app.post(
             );
 
             const accountId = accountInsertResult.insertId;
+
+            await db.execute(
+                "INSERT INTO leaderboard (user_id, money, total_transactions) VALUES (?, ?, ?)",
+                [userId, initialMoney, 0]
+            );
 
             res.cookie("token", token, {
                 secure: process.env.NODE_ENV === "production", // Use HTTPS in production
@@ -484,10 +485,10 @@ app.post(
     }
 );
 
-// Transaction Route (Protected Route)
+// Transaction Route 
 app.post("/transaction", authenticateToken, async (req, res) => {
     const { money, receiverUser_id, transaction_pin, comments } = req.body;
-    const userId = req.user.userId; // Get userId from token
+    const userId = req.user.userId; 
 
     let conn;
 
@@ -497,6 +498,7 @@ app.post("/transaction", authenticateToken, async (req, res) => {
                 .status(500)
                 .json({ message: "Database connection failed." });
         }
+
 
         const [users] = await db.execute(
             "SELECT * FROM users WHERE user_id = ?",
@@ -517,6 +519,7 @@ app.post("/transaction", authenticateToken, async (req, res) => {
                 .json({ message: "Receiver User not found." });
         }
 
+
         const [senderAccount] = await db.execute(
             "SELECT account_id, money, transaction_pin FROM accounts WHERE user_id = ?",
             [userId]
@@ -528,7 +531,7 @@ app.post("/transaction", authenticateToken, async (req, res) => {
         }
 
         const senderAccountId = senderAccount[0].account_id;
-        const senderBalance = senderAccount[0].money;
+        let senderBalance = senderAccount[0].money;
         const storedTransactionPin = senderAccount[0].transaction_pin;
 
         const [receiverAccount] = await db.execute(
@@ -544,6 +547,7 @@ app.post("/transaction", authenticateToken, async (req, res) => {
         const receiverAccountId = receiverAccount[0].account_id;
         const receiverBalance = receiverAccount[0].money;
 
+
         const validPin = await compare(transaction_pin, storedTransactionPin);
 
         if (!validPin) {
@@ -551,6 +555,7 @@ app.post("/transaction", authenticateToken, async (req, res) => {
                 .status(401)
                 .json({ message: "Invalid transaction PIN." });
         }
+
 
         const MINIMUM_BALANCE = 5000;
 
@@ -564,9 +569,11 @@ app.post("/transaction", authenticateToken, async (req, res) => {
             });
         }
 
+
         conn = await db.getConnection();
         try {
             await conn.beginTransaction();
+
 
             await conn.execute(
                 "UPDATE accounts SET money = money - ? WHERE account_id = ?",
@@ -578,32 +585,29 @@ app.post("/transaction", authenticateToken, async (req, res) => {
                 [money, receiverAccountId]
             );
 
+
             await conn.execute(
                 "INSERT INTO transactions (sender_user_id, receiver_user_id, amount, comments) VALUES (?, ?, ?, ?)",
                 [userId, receiverUser_id, money, comments]
             );
+
 
             await conn.execute(
                 "UPDATE accounts SET number_of_transactions = number_of_transactions + 1 WHERE account_id = ?",
                 [senderAccountId]
             );
 
-            const [leaderboardSender] = await conn.execute(
-                "SELECT * FROM leaderboard WHERE user_id = ?",
-                [userId]
-            );
 
-            if (leaderboardSender.length > 0) {
-                await conn.execute(
-                    "UPDATE leaderboard SET money = ?, total_transactions = total_transactions + 1 WHERE user_id = ?",
-                    [senderBalance - money, userId]
-                );
-            } else {
-                await conn.execute(
-                    "INSERT INTO leaderboard (user_id, money, total_transactions) VALUES (?, ?, ?)",
-                    [userId, senderBalance - money, 1]
-                );
-            }
+            const [updatedSenderAccount] = await conn.execute(
+                "SELECT money FROM accounts WHERE account_id = ?",
+                [senderAccountId]
+            );
+            senderBalance = updatedSenderAccount[0].money;
+
+            await conn.execute(
+                "UPDATE leaderboard SET money = ?, total_transactions = total_transactions + 1 WHERE user_id = ?",
+                [senderBalance, userId]
+            );
 
             await conn.commit();
             res.status(200).json({ message: "Transaction successful" });

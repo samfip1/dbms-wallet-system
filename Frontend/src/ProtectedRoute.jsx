@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
     }, []);
 
     if (isAuth === null) {
-        return <p>Loading...</p>; // or a spinner
+        return <p>Loading... 🤔🤔</p>; 
     }
 
     if (!isAuth) {
