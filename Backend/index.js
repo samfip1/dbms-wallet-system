@@ -948,8 +948,9 @@ app.get("/admin/UsersList", authenticateAdmin, async (req, res) => {
             return res.status(404).json({ message: "No users found." });
         }
         res.status(200).json({
-            AllUsers,
+            allUsers: AllUsers,
         });
+        
     } catch (error) {
         console.error("Error fetching users:", error);
         return res.status(500).json({ message: "Error fetching users." });
@@ -958,8 +959,8 @@ app.get("/admin/UsersList", authenticateAdmin, async (req, res) => {
 
 // Admin Block User Route (Protected Route)
 app.post("/admin/blockUser", authenticateAdmin, async (req, res) => {
-    const { userId, reason } = req.body;
 
+    const { userId, reason } = req.body;
     try {
         if (!db) {
             return res

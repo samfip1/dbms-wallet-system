@@ -16,6 +16,10 @@ import ProtectedRoute from "./ProtectedRoute";
 import AdminSignUp from "./Components/Admin/Controller/Signup";
 import AdminSignIn from "./Components/Admin/Controller/Signin";
 import AdminDashboard from "./Components/Admin/Component/AdminDashboard";
+import AdminProfile from "./Components/Admin/Component/Profile";
+import BlockUser from "./Components/Admin/Component/BlockUser";
+import AdminUpdate from "./Components/Admin/Component/AdminUpdate";
+import Userlist from "./Components/Admin/Component/Userlist";
 
 
 axios.defaults.baseURL = "http://localhost:3000"; 
@@ -72,18 +76,14 @@ function App() {
                 <Route
                     path="/admin/signup"
                     element={
-                        <ProtectedRoute>
                             <AdminSignUp />
-                        </ProtectedRoute>
                     }
                 />
 
                 <Route
                     path="/admin/signin"
                     element={
-                        <ProtectedRoute>
                             <AdminSignIn />
-                        </ProtectedRoute>
                     }
                 />
 
@@ -92,6 +92,40 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <AdminDashboard />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/profile"
+                    element={
+                        <ProtectedRoute>
+                            <AdminProfile />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/BlockUser"
+                    element={
+                        <ProtectedRoute>
+                            <BlockUser />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/update"
+                    element={
+                        <ProtectedRoute>
+                            <AdminUpdate />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/UsersList"
+                    element={
+                        <ProtectedRoute>
+                            <Userlist />
                         </ProtectedRoute>
                     }
                 />
