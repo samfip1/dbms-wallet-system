@@ -13,6 +13,10 @@ import Balance from "./Components/User/Component/Balance";
 import Transfer from "./Components/User/Component/Transfer";
 import Pro from "./Components/User/Component/Pro";
 import ProtectedRoute from "./ProtectedRoute";
+import AdminSignUp from "./Components/Admin/Controller/Signup";
+import AdminSignIn from "./Components/Admin/Controller/Signin";
+import AdminDashboard from "./Components/Admin/Component/AdminDashboard";
+
 
 axios.defaults.baseURL = "http://localhost:3000"; 
 axios.defaults.withCredentials = true;
@@ -21,6 +25,7 @@ function App() {
     return (
         <Router>
             <Routes>
+                {/* User Routes */}
                 <Route path="/" element={<Signup />} />
                 <Route path="/user/signin" element={<UserSignIn />} />
 
@@ -60,6 +65,35 @@ function App() {
                 <Route
                     path="*"
                     element={<Navigate to="/dashboard" replace />}
+                />
+
+
+                {/* Admin Routes */}
+                <Route
+                    path="/admin/signup"
+                    element={
+                        <ProtectedRoute>
+                            <AdminSignUp />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/signin"
+                    element={
+                        <ProtectedRoute>
+                            <AdminSignIn />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/dashboard"
+                    element={
+                        <ProtectedRoute>
+                            <AdminDashboard />
+                        </ProtectedRoute>
+                    }
                 />
             </Routes>
         </Router>

@@ -1042,7 +1042,7 @@ app.post("/admin/FreezeMoney", authenticateAdmin, async (req, res) => {
     }
 });
 
-// Verify Route (For Frontend - check if token is valid)
+// Verify Route
 app.get("/verify", (req, res) => {
     const token = req.cookies.token;
     if (!token) {

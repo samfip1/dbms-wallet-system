@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Admin from "../../Admin/Admin";
 
 const UserSignUp = () => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ const UserSignUp = () => {
         phone: "",
         transaction_Pin: "",
         age: "",
-        address: ""
+        address: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -85,7 +86,8 @@ const UserSignUp = () => {
         if (!formData.transaction_Pin.trim()) {
             newErrors.transaction_Pin = "Transaction PIN is required";
         } else if (!pinRegex.test(formData.transaction_Pin)) {
-            newErrors.transaction_Pin = "Transaction PIN must be a 4-digit number";
+            newErrors.transaction_Pin =
+                "Transaction PIN must be a 4-digit number";
         }
 
         setErrors(newErrors);
@@ -112,9 +114,9 @@ const UserSignUp = () => {
                     phone_number: formData.phone,
                     transaction_pin: formData.transaction_Pin,
                     age: formData.age,
-                    address: formData.address
+                    address: formData.address,
                 },
-                
+
                 //whenever 400 request comes it's likely the parameter we are sending are not correct
                 {
                     headers: {
@@ -124,7 +126,9 @@ const UserSignUp = () => {
             );
             console.log(response.data);
 
-            setSuccessMessage("Account created successfully! Redirecting to login...");
+            setSuccessMessage(
+                "Account created successfully! Redirecting to login..."
+            );
 
             setFormData({
                 username: "",
@@ -135,7 +139,7 @@ const UserSignUp = () => {
                 phone: "",
                 transaction_Pin: "",
                 age: "",
-                address: ""
+                address: "",
             });
 
             setTimeout(() => {
@@ -145,7 +149,7 @@ const UserSignUp = () => {
             console.error("API Error:", error);
             setApiError(
                 error.response?.data?.message ||
-                "An unexpected error occurred. Please try again."
+                    "An unexpected error occurred. Please try again."
             );
         } finally {
             setIsLoading(false);
@@ -153,217 +157,298 @@ const UserSignUp = () => {
     };
 
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gray-100 px-4 py-8">
-            <div className="bg-white rounded-lg shadow-md p-6 sm:p-8 w-full max-w-md">
-                <h2 className="text-2xl font-bold text-blue-900 mb-2 text-center">
-                    Create Your Account
-                </h2>
-                <p className="text-gray-600 mb-6 text-center">
-                    Join PayTM and start your financial journey
-                </p>
+        <div>
+            <Admin />
+            <div className="flex justify-center items-center min-h-screen bg-gray-100 px-4 py-8">
+                <div className="bg-white rounded-lg shadow-md p-6 sm:p-8 w-full max-w-md">
+                    <h2 className="text-2xl font-bold text-blue-900 mb-2 text-center">
+                        Create Your Account
+                    </h2>
+                    <p className="text-gray-600 mb-6 text-center">
+                        Join PayTM and start your financial journey
+                    </p>
 
-                {apiError && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-center">
-                        {apiError}
-                    </div>
-                )}
+                    {apiError && (
+                        <div className="bg-red-50 text-red-600 p-3 rounded-md mb-4 text-center">
+                            {apiError}
+                        </div>
+                    )}
 
-                {successMessage && (
-                    <div className="bg-green-50 text-green-700 p-3 rounded-md mb-4 text-center">
-                        {successMessage}
-                    </div>
-                )}
+                    {successMessage && (
+                        <div className="bg-green-50 text-green-700 p-3 rounded-md mb-4 text-center">
+                            {successMessage}
+                        </div>
+                    )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    
-                    <div className="space-y-1">
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                            Full Name
-                        </label>
-                        <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            placeholder="Enter your full name"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.name ? "border-red-500" : "border-gray-300"
-                            }`}
-                        />
-                        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-                    </div>
-
-                    <div className="space-y-1">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                            Email
-                        </label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="Enter your email"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.email ? "border-red-500" : "border-gray-300"
-                            }`}
-                        />
-                        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-1">
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                Username
+                            <label
+                                htmlFor="name"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Full Name
                             </label>
                             <input
                                 type="text"
-                                id="username"
-                                name="username"
-                                value={formData.username}
+                                id="name"
+                                name="name"
+                                value={formData.name}
                                 onChange={handleChange}
-                                placeholder="Choose a username"
+                                placeholder="Enter your full name"
                                 className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                    errors.username ? "border-red-500" : "border-gray-300"
+                                    errors.name
+                                        ? "border-red-500"
+                                        : "border-gray-300"
                                 }`}
                             />
-                            {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
+                            {errors.name && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.name}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-1">
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                                Phone Number
+                            <label
+                                htmlFor="email"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Email
                             </label>
                             <input
-                                type="tel"
-                                id="phone"
-                                name="phone"
-                                value={formData.phone}
+                                type="email"
+                                id="email"
+                                name="email"
+                                value={formData.email}
                                 onChange={handleChange}
-                                placeholder="10-digit number"
+                                placeholder="Enter your email"
                                 className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                    errors.phone ? "border-red-500" : "border-gray-300"
+                                    errors.email
+                                        ? "border-red-500"
+                                        : "border-gray-300"
                                 }`}
                             />
-                            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                            {errors.email && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.email}
+                                </p>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label
+                                    htmlFor="username"
+                                    className="block text-sm font-medium text-gray-700"
+                                >
+                                    Username
+                                </label>
+                                <input
+                                    type="text"
+                                    id="username"
+                                    name="username"
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                    placeholder="Choose a username"
+                                    className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                        errors.username
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
+                                />
+                                {errors.username && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {errors.username}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label
+                                    htmlFor="phone"
+                                    className="block text-sm font-medium text-gray-700"
+                                >
+                                    Phone Number
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="phone"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    placeholder="10-digit number"
+                                    className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                        errors.phone
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
+                                />
+                                {errors.phone && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {errors.phone}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <label
+                                    htmlFor="address"
+                                    className="block text-sm font-medium text-gray-700"
+                                >
+                                    Address
+                                </label>
+                                <input
+                                    type="text"
+                                    id="address"
+                                    name="address"
+                                    value={formData.address}
+                                    onChange={handleChange}
+                                    placeholder="Enter your city"
+                                    className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                        errors.address
+                                            ? "border-red-500"
+                                            : "border-gray-300"
+                                    }`}
+                                />
+                                {errors.address && (
+                                    <p className="text-red-500 text-xs mt-1">
+                                        {errors.address}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label
+                                htmlFor="age"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Age
+                            </label>
+                            <input
+                                type="number"
+                                id="age"
+                                name="age"
+                                value={formData.age}
+                                onChange={handleChange}
+                                placeholder="Enter your age"
+                                className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    errors.age
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                }`}
+                            />
+                            {errors.age && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.age}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1">
+                            <label
+                                htmlFor="password"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Password
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Create a password"
+                                className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    errors.password
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                }`}
+                            />
+                            {errors.password && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.password}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1">
+                            <label
+                                htmlFor="confirmPassword"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Confirm Password
+                            </label>
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                placeholder="Confirm your password"
+                                className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    errors.confirmPassword
+                                        ? "border-red-500"
+                                        : "border-gray-300"
+                                }`}
+                            />
+                            {errors.confirmPassword && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.confirmPassword}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-1">
-                            <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                                Address
+                            <label
+                                htmlFor="transaction_Pin"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Transaction PIN (4 digits)
                             </label>
                             <input
-                                type="text"
-                                id="address"
-                                name="address"
-                                value={formData.address}
+                                type="password"
+                                id="transaction_Pin"
+                                name="transaction_Pin"
+                                value={formData.transaction_Pin}
                                 onChange={handleChange}
-                                placeholder="Enter your city"
+                                placeholder="Create a 4-digit PIN"
+                                maxLength="4"
                                 className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                    errors.address ? "border-red-500" : "border-gray-300"
+                                    errors.transaction_Pin
+                                        ? "border-red-500"
+                                        : "border-gray-300"
                                 }`}
                             />
-                            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+                            {errors.transaction_Pin && (
+                                <p className="text-red-500 text-xs mt-1">
+                                    {errors.transaction_Pin}
+                                </p>
+                            )}
                         </div>
-                    </div>
 
-                    <div className="space-y-1">
-                        <label htmlFor="age" className="block text-sm font-medium text-gray-700">
-                            Age
-                        </label>
-                        <input
-                            type="number"
-                            id="age"
-                            name="age"
-                            value={formData.age}
-                            onChange={handleChange}
-                            placeholder="Enter your age"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.age ? "border-red-500" : "border-gray-300"
+                        <button
+                            type="submit"
+                            className={`w-full py-3 px-4 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                isLoading
+                                    ? "bg-blue-300 cursor-not-allowed"
+                                    : "bg-blue-500 hover:bg-blue-600"
                             }`}
-                        />
-                        {errors.age && <p className="text-red-500 text-xs mt-1">{errors.age}</p>}
-                    </div>
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Creating Account..." : "Sign Up"}
+                        </button>
+                    </form>
 
-                    <div className="space-y-1">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                            Password
-                        </label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            placeholder="Create a password"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.password ? "border-red-500" : "border-gray-300"
-                            }`}
-                        />
-                        {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
-                    </div>
-
-                    <div className="space-y-1">
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                            Confirm Password
-                        </label>
-                        <input
-                            type="password"
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            placeholder="Confirm your password"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.confirmPassword ? "border-red-500" : "border-gray-300"
-                            }`}
-                        />
-                        {errors.confirmPassword && (
-                            <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
-                        )}
-                    </div>
-                    <div className="space-y-1">
-                        <label htmlFor="transaction_Pin" className="block text-sm font-medium text-gray-700">
-                            Transaction PIN (4 digits)
-                        </label>
-                        <input
-                            type="password"
-                            id="transaction_Pin"
-                            name="transaction_Pin"
-                            value={formData.transaction_Pin}
-                            onChange={handleChange}
-                            placeholder="Create a 4-digit PIN"
-                            maxLength="4"
-                            className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                errors.transaction_Pin ? "border-red-500" : "border-gray-300"
-                            }`}
-                        />
-                        {errors.transaction_Pin && (
-                            <p className="text-red-500 text-xs mt-1">{errors.transaction_Pin}</p>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        className={`w-full py-3 px-4 rounded-md font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                            isLoading ? "bg-blue-300 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-                        }`}
-                        disabled={isLoading}
-                    >
-                        {isLoading ? "Creating Account..." : "Sign Up"}
-                    </button>
-                </form>
-
-                <p className="mt-6 text-center text-sm text-gray-600">
-                    Already have an account?{" "}
-                    <button
-                        onClick={() => {
-                            navigate("/user/signin");
-                        }}
-                        className="text-blue-500 font-medium hover:underline"
-                    >
-                        Log in
-                    </button>
-                </p>
+                    <p className="mt-6 text-center text-sm text-gray-600">
+                        Already have an account?{" "}
+                        <button
+                            onClick={() => {
+                                navigate("/user/signin");
+                            }}
+                            className="text-blue-500 font-medium hover:underline"
+                        >
+                            Log in
+                        </button>
+                    </p>
+                </div>
             </div>
         </div>
     );
