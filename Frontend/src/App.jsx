@@ -20,6 +20,9 @@ import AdminProfile from "./Components/Admin/Component/Profile";
 import BlockUser from "./Components/Admin/Component/BlockUser";
 import AdminUpdate from "./Components/Admin/Component/AdminUpdate";
 import Userlist from "./Components/Admin/Component/Userlist";
+import Freezemoney from "./Components/Admin/Component/Freezemoney";
+import Update from "./Components/User/Component/Update";
+import LoginActivity from "./Components/User/Component/loginActivity";
 
 
 axios.defaults.baseURL = "http://localhost:3000"; 
@@ -46,6 +49,22 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Balance />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/user/update"
+                    element={
+                        <ProtectedRoute>
+                            <Update />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/user/loginActivity"
+                    element={
+                        <ProtectedRoute>
+                            <LoginActivity />
                         </ProtectedRoute>
                     }
                 />
@@ -126,6 +145,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Userlist />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/admin/FreezeMoney"
+                    element={
+                        <ProtectedRoute>
+                            <Freezemoney />
                         </ProtectedRoute>
                     }
                 />

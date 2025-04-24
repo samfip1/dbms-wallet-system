@@ -441,7 +441,7 @@ app.get("/user/profile", authenticateToken, async (req, res) => {
 
 // Update Username Route (Protected Route)
 app.post(
-    "/update",
+    "/user/update",
     authenticateToken,
     [
         body("newUsername")

@@ -48,11 +48,31 @@ function Profile() {
                 type="submit"
                 className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded"
                 onClick={() => {
+                    navigate("/user/update");
+                }}
+            >
+                Update User
+            </button>
+            <button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded"
+                onClick={() => {
                     navigate("/user/Balance");
                 }}
             >
                 Balance
             </button>
+
+            <button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded"
+                onClick={() => {
+                    navigate("/user/loginActivity");
+                }}
+            >
+                Login Activity
+            </button>
+
             <button
                 type="submit"
                 className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded"
