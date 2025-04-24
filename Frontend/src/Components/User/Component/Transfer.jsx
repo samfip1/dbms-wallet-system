@@ -1,9 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 function Transfer() {
-  return (
-    <div>Transfer</div>
-  )
+    const [amount, setAmount] = useState(0);
 }
 
 export default Transfer

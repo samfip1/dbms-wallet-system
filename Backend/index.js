@@ -359,8 +359,41 @@ app.get("/user/loginActivity", authenticateToken, async (req, res) => {
     }
 });
 
+
+app.get("/user/balance", authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        if (!db) {
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
+        }
+        const [balance] = await db.execute(
+            "SELECT money FROM accounts WHERE user_id = ?",
+            [userId]
+        );
+
+        if (balance.length === 0) {
+            return res
+                .status(404)
+                .json({ message: "No login activity found." });
+        }
+
+        res.status(200).json({
+            balance,
+        });
+    } catch (error) {
+        console.error("Login activity error:", error);
+        res.status(500).json({
+            message: "Failed to retrieve login activity.",
+            error: error.message,
+        });
+    }
+});
+
 // User Profile Route (Protected Route)
-app.get("/profile", authenticateToken, async (req, res) => {
+app.get("/user/profile", authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
 
