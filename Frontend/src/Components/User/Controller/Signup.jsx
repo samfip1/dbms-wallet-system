@@ -114,6 +114,7 @@ const UserSignUp = () => {
                     age: formData.age,
                     address: formData.address
                 },
+                
                 //whenever 400 request comes it's likely the parameter we are sending are not correct
                 {
                     headers: {
@@ -121,6 +122,7 @@ const UserSignUp = () => {
                     },
                 }
             );
+            console.log(response.data);
 
             setSuccessMessage("Account created successfully! Redirecting to login...");
 
@@ -173,7 +175,7 @@ const UserSignUp = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Full Name */}
+                    
                     <div className="space-y-1">
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                             Full Name

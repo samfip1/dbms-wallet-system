@@ -41,7 +41,7 @@ function App() {
                     }
                 />
                 <Route
-                    path="/user/transfer"
+                    path="/user/transaction"
                     element={
                         <ProtectedRoute>
                             <Transfer />

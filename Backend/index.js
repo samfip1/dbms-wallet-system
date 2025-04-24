@@ -519,7 +519,7 @@ app.post(
 );
 
 // Transaction Route 
-app.post("/transaction", authenticateToken, async (req, res) => {
+app.post("/user/transaction", authenticateToken, async (req, res) => {
     const { money, receiverUser_id, transaction_pin, comments } = req.body;
     const userId = req.user.userId; 
 
