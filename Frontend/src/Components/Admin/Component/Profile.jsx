@@ -29,6 +29,7 @@ function AdminProfile() {
                     <p>Full Name: {profile.addmin.name}</p>
                     <p>Phone Number: {profile.addmin.phone}</p>
                     <p>Username: {profile.addmin.username}</p>
+                    <p>Created At: {profile.addmin.created_at}</p>
                 </div>
             ) : (
                 <p>Loading or no profile data available...</p>

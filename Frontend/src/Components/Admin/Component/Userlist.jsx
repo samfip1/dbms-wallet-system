@@ -13,14 +13,14 @@ function Userlist() {
                     }
                 });
                 console.log(res.data);
-                setUsers(res.data.allUsers); // ✅ Extract the array correctly
+                setUsers(res.data.allUsers);
             } catch (error) {
                 console.error("Error fetching users:", error);
             }
         };
 
         fetchAllUsers();
-    }, []); // ✅ Dependency array added
+    }, []);
 
     return (
         <div>
@@ -35,6 +35,7 @@ function Userlist() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Money</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -47,6 +48,9 @@ function Userlist() {
                             <td className="px-6 py-4 whitespace-nowrap">{user.city}</td>
                             <td className="px-6 py-4 whitespace-nowrap">{user.age}</td>
                             <td className="px-6 py-4 whitespace-nowrap">{user.full_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                {user.money !== null ? `₹${parseFloat(user.money).toFixed(2)}` : 'N/A'}
+                            </td>
                         </tr>
                     ))}
                 </tbody>

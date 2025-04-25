@@ -153,6 +153,7 @@ app.post(
             age,
             email,
             transaction_pin,
+            city
         } = req.body;
 
         try {
@@ -173,7 +174,7 @@ app.post(
                     .json({ message: "Username or email already exists." });
             }
 
-            const saltRounds = 12;
+            const saltRounds = 14;
             const hashedPassword = await hash(password, saltRounds);
 
             const hashedTransactionPin = await hash(
@@ -182,8 +183,8 @@ app.post(
             );
 
             const [result] = await db.execute(
-                "INSERT INTO users (username, password, full_name, phone_number, age, email) VALUES (?, ?, ?, ?, ?, ?)",
-                [username, hashedPassword, full_name, phone_number, age, email]
+                "INSERT INTO users (username, password, full_name, phone_number, age, email, city) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [username, hashedPassword, full_name, phone_number, age, email, city]
             );
 
             const userId = result.insertId;
@@ -227,6 +228,7 @@ app.post(
                 full_name,
                 money: initialMoney,
                 accountId,
+                city
             });
         } catch (error) {
             console.error("Registration error:", error);
@@ -660,6 +662,26 @@ app.post("/user/transaction", authenticateToken, async (req, res) => {
     }
 });
 
+
+app.get("/leaderboard",async (req, res) => {
+    try {
+        if (!db) {
+            return res
+                .status(500)
+                .json({ message: "Database connection failed." });
+        }
+
+        const [leaderboardData] = await db.execute(
+            "SELECT * FROM leaderboard ORDER BY total_transactions DESC"
+        ); 
+        res.status(200).json(leaderboardData); 
+
+    } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+        res.status(500).json({ message: "Failed to fetch leaderboard" });
+    }
+});
+
 // Logout Route
 app.get("/user/logout", (req, res) => {
     res.clearCookie("token", { path: "/" });
@@ -943,19 +965,29 @@ app.get("/admin/UsersList", authenticateAdmin, async (req, res) => {
                 .status(500)
                 .json({ message: "Database connection failed." });
         }
-        const [AllUsers] = await db.execute("Select * from users");
+
+        // Join users with accounts to include the money field
+        const [AllUsers] = await db.execute(`
+            SELECT users.*, accounts.money 
+            FROM users 
+            LEFT JOIN accounts 
+            ON users.user_id = accounts.user_id
+        `);
+
         if (AllUsers.length === 0) {
             return res.status(404).json({ message: "No users found." });
         }
+
         res.status(200).json({
             allUsers: AllUsers,
         });
-        
+
     } catch (error) {
         console.error("Error fetching users:", error);
         return res.status(500).json({ message: "Error fetching users." });
     }
 });
+
 
 // Admin Block User Route (Protected Route)
 app.post("/admin/blockUser", authenticateAdmin, async (req, res) => {

@@ -23,6 +23,7 @@ import Userlist from "./Components/Admin/Component/Userlist";
 import Freezemoney from "./Components/Admin/Component/Freezemoney";
 import Update from "./Components/User/Component/Update";
 import LoginActivity from "./Components/User/Component/loginActivity";
+import Leaderboard from "./Components/Admin/Component/Leaderboard";
 
 
 axios.defaults.baseURL = "http://localhost:3000"; 
@@ -82,6 +83,12 @@ function App() {
                         <ProtectedRoute>
                             <Pro />
                         </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/dbms-project/leaderboard"
+                    element={
+                            <Leaderboard />
                     }
                 />
                 

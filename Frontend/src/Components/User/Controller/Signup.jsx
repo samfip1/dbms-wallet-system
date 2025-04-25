@@ -15,7 +15,7 @@ const UserSignUp = () => {
         phone: "",
         transaction_Pin: "",
         age: "",
-        address: "",
+        city: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -114,7 +114,7 @@ const UserSignUp = () => {
                     phone_number: formData.phone,
                     transaction_pin: formData.transaction_Pin,
                     age: formData.age,
-                    address: formData.address,
+                    city: formData.city,
                 },
 
                 //whenever 400 request comes it's likely the parameter we are sending are not correct
@@ -139,7 +139,7 @@ const UserSignUp = () => {
                 phone: "",
                 transaction_Pin: "",
                 age: "",
-                address: "",
+                city: "",
             });
 
             setTimeout(() => {
@@ -290,27 +290,27 @@ const UserSignUp = () => {
                             </div>
                             <div className="space-y-1">
                                 <label
-                                    htmlFor="address"
+                                    htmlFor="city"
                                     className="block text-sm font-medium text-gray-700"
                                 >
                                     Address
                                 </label>
                                 <input
                                     type="text"
-                                    id="address"
-                                    name="address"
-                                    value={formData.address}
+                                    id="city"
+                                    name="city"
+                                    value={formData.city}
                                     onChange={handleChange}
                                     placeholder="Enter your city"
                                     className={`w-full px-3 py-2 border rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                        errors.address
+                                        errors.city
                                             ? "border-red-500"
                                             : "border-gray-300"
                                     }`}
                                 />
-                                {errors.address && (
+                                {errors.city && (
                                     <p className="text-red-500 text-xs mt-1">
-                                        {errors.address}
+                                        {errors.city}
                                     </p>
                                 )}
                             </div>
